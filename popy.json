@@ -19,12 +19,12 @@
     "left": {
       "frames": [12, 14, 12, 14],
       "next": "left",
-      "frequency": 12
+      "frequency": 2
     },
     "right": {
       "frames": [12, 15, 12, 15],
       "next": "right",
-      "frequency": 3
+      "frequency": 6
     }
   }
 }
