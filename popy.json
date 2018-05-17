@@ -7,9 +7,9 @@
   },
   "animations": {
     "stand": {
-      "frames": [10],
+      "frames": [17],
       "next": "stand",
-      "frequency": 1
+      "frequency": 4
     },
     "fly": {
       "frames": [5, 6, 5],
@@ -17,12 +17,12 @@
       "frequency": 4
     },
     "left": {
-      "frames": [12, 10, 12, 10],
+      "frames": [12, 14, 12, 14],
       "next": "left",
       "frequency": 4
     },
     "right": {
-      "frames": [12, 10, 12, 10],
+      "frames": [12, 14, 12, 14],
       "next": "right",
       "frequency": 4
     }
