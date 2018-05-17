@@ -9,20 +9,20 @@
     "stand": {
       "frames": [16],
       "next": "stand",
-      "frequency": 3
+      "frequency": 0
     },
     "fly": {
-      "frames": [7, 6, 7, 6],
+      "frames": [7, 6, 7],
       "next": "fly",
-      "frequency": 3
+      "frequency": 12
     },
     "left": {
       "frames": [12, 14, 12, 14],
       "next": "left",
-      "frequency": 3
+      "frequency": 12
     },
     "right": {
-      "frames": [12, 14, 12, 14],
+      "frames": [12, 15, 12, 15],
       "next": "right",
       "frequency": 3
     }
