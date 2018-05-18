@@ -17,14 +17,14 @@
       "frequency": 4
     },
     "left": {
-      "frames": [1, 2, 1, 2,0],
-      "next": "left",
-      "frequency": 2
+      "frames": [1, 2, 1, 2],
+      "next": "stand",
+      "frequency": 4
     },
     "right": {
-      "frames": [3,4,3,4,5],
-      "next": "right",
-      "frequency": 6
+      "frames": [3,4,3,4],
+      "next": "stand",
+      "frequency": 4
     }
   }
 }
