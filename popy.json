@@ -7,7 +7,7 @@
   },
   "animations": {
     "stand": {
-      "frames": [9],
+      "frames": [5],
       "next": "stand",
       "frequency": 0
     },
@@ -23,7 +23,7 @@
     },
     "right": {
       "frames": [3, 4, 3, 4],
-      "next": "stand",
+      "next": "right",
       "frequency": 4
     }
   }
