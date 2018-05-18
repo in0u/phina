@@ -14,7 +14,7 @@
     "fly": {
       "frames": [7, 6, 8],
       "next": "fly",
-      "frequency": 4
+      "frequency": 6
     },
     "left": {
       "frames": [1, 2, 1, 2],
