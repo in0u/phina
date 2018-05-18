@@ -18,11 +18,11 @@
     },
     "left": {
       "frames": [1, 2, 1, 2],
-      "next": "stand",
+      "next": "left",
       "frequency": 4
     },
     "right": {
-      "frames": [3,4,3,4],
+      "frames": [3, 4, 3, 4],
       "next": "stand",
       "frequency": 4
     }
