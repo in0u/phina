@@ -1,0 +1,669 @@
+<!doctype html>
+ 
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, user-scalable=no" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    
+    <title>RunJumpAutoScroll</title>
+    <meta name="description" content="二段ジャンプ。" />
+    <script src='phina.js'></script>
+    <script src='phina.tiledmap.js'></script>
+    <style>*, *:before, *:after {
+  box-sizing: border-box; 
+}
+html {
+  font-size: 13px;
+}
+body {
+  font-family: Avenir, "Open Sans", "Helvetica Neue", Helvetica, Arial, Verdana, Roboto, "游ゴシック", "Yu Gothic", "游ゴシック体", "YuGothic", "ヒラギノ角ゴ Pro W3", "Hiragino Kaku Gothic Pro", "Meiryo UI", "メイリオ", Meiryo, "ＭＳ Ｐゴシック", "MS PGothic", sans-serif;
+  color: #444;
+  background-color: hsl(0, 0%, 96%);
+}
+h1 {
+  font-size: 1.8rem;
+}
+
+</style>
+  </head>
+
+  </head>
+  <body>
+    <script>
+    
+/*
+ * Runstant
+ * 思いたったらすぐ開発. プログラミングに革命を...
+ */
+
+// グローバルに展開
+phina.globalize();
+
+// 定数
+var ASSETS = {
+  image: {
+    'tomapiko': 'asset/popy_tom3.png',
+    'donuts':'asset/donuts.png',
+    'bravo':'asset/chero_bravo.png',
+    'die':'asset/chero_die.png',
+    'result_normal':'asset/result_normal.png',
+    'result_high':'asset/result_high.png',
+    'result_great':'asset/result_marverous.png',
+  },
+  sound:{
+    bgm1:'https://raw.githubusercontent.com/in0u/phina/master/asset/tita.mp3',
+    se1:'https://raw.githubusercontent.com/in0u/phina/master/asset/jump08.mp3',
+    se2:'https://raw.githubusercontent.com/in0u/phina/master/asset/powerup05.mp3',
+    se3:'https://raw.githubusercontent.com/in0u/phina/master/asset/powerup10.mp3',
+    se4:'https://raw.githubusercontent.com/in0u/phina/master/asset/powerup11.mp3',
+    //bgm1:'asset/tita.mp3',
+    //se1:'asset/jump08.mp3',
+    //se2:'asset/powerup05.mp3',
+    //se3:'asset/powerup10.mp3',
+    //se4:'asset/powerup11.mp3',
+    
+  },  
+  spritesheet: {
+   'popy_ss': 'asset/popy.tmss',
+  },
+  tmx: {
+    'map': 'asset/map.tmx',
+  }
+};
+
+
+var SCREEN_WIDTH  = 480;              // スクリーン幅
+var SCREEN_HEIGHT = 320;              // スクリーン高さ
+var SPEED         = 5;
+var JUMP_POWOR = 7; // ジャンプ力
+var JUMP_POWOR2 = 10; // ジャンプ力
+var GRAVITY = 0.5; // 重力
+var FLOORY = 200;
+var CPLUS = 64;
+var UNDER_HEIGHT=192;
+var DEADZONE=230;
+var SCORE = 0;//スコア
+var SCORELABEL;//スコア表示用のラベル
+var JUMPLABEL="";//ジャンプ表示用のラベル
+var BRAVO;//ブラボーラベル
+var D_CORECTION = [];
+var HIT_RADIUS     = 16;  // 当たり判定用の半径
+/*
+ * メインシーン
+ */
+phina.define("MainScene", {
+  // 継承
+  superClass: 'DisplayScene',
+
+  // 初期化
+  init: function(options) {
+    // super init
+    this.superInit(options);
+
+    //スコアをリセット
+    SCORE = 0;
+    D_CORECTION.clear();
+
+	//マップ
+    this.mapBase = phina.display.DisplayElement()
+      .setPosition(0, 0)
+      .addChildTo(this);
+
+    //.tmxファイルからマップをイメージとして取得し、スプライトで表示
+    this.tmx = phina.asset.AssetManager.get("tmx", "map");
+    this.map = phina.display.Sprite(this.tmx.getImage())
+      .setOrigin(0, 0)
+      .setPosition(0, 0)
+      .addChildTo(this.mapBase);
+    this.map.tweener.clear().setUpdateType('fps');    
+
+    // プレイヤー
+    var player = Player('tomapiko').addChildTo(this);
+    player.setPosition(100, FLOORY);
+    this.player = player;
+
+	//ドーナツグループ
+    this.donutsGroup = DisplayElement().addChildTo(this);
+
+	//セリフ
+    this.bravoGroup=DisplayElement().addChildTo(this);
+
+	//音楽再生
+    SoundManager.playMusic("bgm1");
+
+	//スコアラベルをMainSceneに追加
+    SCORELABEL = Label({
+      text: SCORE,//テキスト
+      x: 70,//x座標
+      y: 35,//y座標
+      fontSize: 24,//フォントサイズ
+      fill: 'pink'//色
+    }).addChildTo(this);
+
+	// 画面タッチ時処理
+	this.onpointend = function() {
+//debug
+//console.log(player.isJump+":"+player.isJump2+":"+player.isOnFloor);
+
+		//ジャンプ
+		if(!player.isJump&&!player.isJump2&&player.isOnFloor){
+			player.isJump =true;
+			player.isJump2 =false;
+			player.isOnFloor = false;
+		    player.physical.velocity.y = -JUMP_POWOR;
+		    player.physical.gravity.y = GRAVITY;
+		    SoundManager.play('se1');
+
+		}else{
+			//2段ジャンプ
+			if(!player.isJump&&!player.isJump2&&!player.isOnFloor){
+			    player.anim.gotoAndPlay('fly');
+				player.isJump =true;
+				player.isJump2 =true;
+				player.isOnFloor = false;
+			    player.physical.velocity.y = -JUMP_POWOR2;
+			    player.physical.gravity.y = GRAVITY;
+			    SoundManager.play('se4');
+
+				// JumpBonusラベル表示
+		    	//JUMPLABEL = Label({
+		      	//text: '100',
+			    //fontSize: 20,
+		    	//fill: 'yellow',
+			    //}).addChildTo(this).setPosition(player.x, player.y-30);
+			}
+		}
+	}
+  },
+  //着地判定
+  isOnTheFloor: function(jf,jf2,of,pY,nY) {
+	//ジャンプして着地した
+	if((jf&&jf2&&of)||(jf&&!jf2&&of)){
+		return true;
+	}
+	return false;
+  },
+
+  //マップ衝突判定
+  mapCollision: function(x, y) {
+    var mapx = Math.floor(x / 32);
+    var mapy = Math.floor(y / 32);
+
+    //マップデータから'Collision'レイヤーを取得
+    var collision = this.tmx.getMapData("collision");
+//debug
+//console.log(collision);
+	if(y>0){
+	    //指定座標にマップチップがあると真を返す
+	    var chip = collision[mapy * this.tmx.width + mapx];
+	    if (chip !== -1){
+	    	 return true;
+		}
+	}
+    return false;
+  },
+  
+  //ドーナツあたり判定
+  isHitDonuts: function(player,donuts) {
+
+    // 判定用の円
+    var c1 = Circle(player.x, player.y, HIT_RADIUS);
+    var c2 = Circle(donuts.x, donuts.y, HIT_RADIUS);
+    // 円判定
+    if (Collision.testCircleCircle(c1, c2)) {
+//debug
+//console.log("p:"+player.x+":"+ player.y);
+//console.log("d:"+donuts.x+":"+ donuts.y);
+	  	var bravo =  Bravo().addChildTo(this.bravoGroup);	
+    	return true;
+    }
+    return false;
+  },
+
+  //ドーナツを消す
+  removeDonuts: function() {
+    	var first = this.donutsGroup.children.first;
+	    if(first){
+	    	first.remove();
+	    }
+	    this.bravoGroup.children.clear();
+
+  },
+
+
+
+
+  // 更新
+  update: function(app) {
+    // プレイヤー
+    var player = this.player;
+    // ドーナツ
+    var donutsGroup = this.donutsGroup;
+	var nowY =0;
+    //スクロール後のxの値
+	var mx = -this.map.x+100;
+
+    //スコアをインクリメント
+    SCORE ++;
+    //スコアラベルの表示内容を更新
+    SCORELABEL.text = '' + SCORE;
+
+	//今の地面がどこか調べる
+	if(this.mapCollision(mx,player.y+CPLUS)){
+		//地面に触れた。
+		player.isOnFloor=true;
+		nowY = player.y;
+	}else{
+		//地面に触れてない
+		player.isOnFloor=false;
+	}
+	
+	//そもそも地面にいる
+	if(player.isOnFloor){
+		//且つジャンプしてないなら
+		if(!player.isJump){
+			player.physical.velocity.y = 0;
+			player.physical.gravity.y = 0;
+//console.log("run:"+player.y+":"+nowY);
+		}else{
+		
+//console.log("jump");
+		}
+		if(player.y>=DEADZONE){
+			//死んだ？
+		      SoundManager.stopMusic();
+			this.exit('GameOver',{score:SCORE,donuts:D_CORECTION});
+
+		}
+	}else{
+		//地面にいなくて且つジャンプしてないなら
+		if(!player.isJump&&!player.isJump2){
+			//着地できてないけど、最下層の地面より上にいる。多分生きてる
+			if(UNDER_HEIGHT=>player.y){
+				//地面探しに行く
+				player.physical.gravity.y = GRAVITY;
+			}
+		}
+	}
+
+	//着地した
+	if(this.isOnTheFloor(player.isJump,player.isJump2,player.isOnFloor,player.y,nowY)){
+//console.log("stand");
+			player.isJump =false;
+			player.isJump2 =false;
+			player.isOnFloor = true;
+			player.setPosition(player.x,nowY-CPLUS/2);
+			player.anim.gotoAndPlay('right');
+			JUMPLABEL.text='';
+
+	}
+	
+//console.log(player.isJump+":"+player.isJump2+":"+player.isOnFloor);
+
+    //Mapの移動
+    if(this.map.x <= -5920) {
+		player.x+= SPEED;
+		if(player.x >SCREEN_WIDTH){
+		      SoundManager.stopMusic();
+		
+			this.exit('GameCrear',{score:SCORE,donuts:D_CORECTION});
+		}
+    }else{
+        this.map.x -= SPEED;
+    }
+    
+	// ドーナツグループ出現
+    if(this.map.x===-100){
+	    var donuts=Donuts('donuts',SCREEN_WIDTH,200,0).addChildTo(donutsGroup);
+	}
+	if(this.map.x===-580){
+		this.removeDonuts();
+	}
+    if(this.map.x===-1000){
+	    var donuts=Donuts('donuts',SCREEN_WIDTH,110,1).addChildTo(donutsGroup);
+	}
+	if(this.map.x===-1480){
+		this.removeDonuts();
+	}
+    if(this.map.x===-1900){
+	    var donuts=Donuts('donuts',SCREEN_WIDTH,60,2).addChildTo(donutsGroup);
+	}
+	if(this.map.x===-2380){
+		this.removeDonuts();
+	}
+    if(this.map.x===-3100){
+	    var donuts=Donuts('donuts',SCREEN_WIDTH,130,3).addChildTo(donutsGroup);
+	}
+	if(this.map.x===-3580){
+		this.removeDonuts();
+	}
+    if(this.map.x===-3700){
+	    var donuts=Donuts('donuts',SCREEN_WIDTH,10,4).addChildTo(donutsGroup);
+	}
+	if(this.map.x===-4180){
+		this.removeDonuts();
+	}
+    if(this.map.x===-4900){
+	    var donuts=Donuts('donuts',SCREEN_WIDTH,50,5).addChildTo(donutsGroup);
+	}
+	if(this.map.x===-5380){
+		this.removeDonuts();
+	}
+	
+    var first = donutsGroup.children.first;
+    if(first){
+      first.x -= SPEED;
+ 	  if(this.isHitDonuts(player,first)){
+		SoundManager.play('se3');
+ 	  	first.remove();
+ 		D_CORECTION.push(first.frameIndex);  
+ 	  }
+    }
+	
+	//ジャンプボーナス
+	if(player.isJump2){
+		SCORE=SCORE+5;
+	}
+
+    //音楽止める
+    var key=app.keyboard;
+    if(key.getKey("e")){
+      SoundManager.stopMusic();
+    }
+ },
+
+
+
+});
+
+/*
+ * プレイヤークラス
+ */
+phina.define('Player', {
+  superClass: 'Sprite',
+  // コンストラクタ
+  init: function(image) {
+    // 親クラス初期化
+    this.superInit(image);
+    // フレームアニメーションをアタッチ
+    this.anim = FrameAnimation('popy_ss').attachTo(this);
+    // 初期アニメーション指定
+    this.anim.gotoAndPlay('right');
+    //床の上かどうか
+    this.isOnFloor=false;
+    //ジャンプ中かどうか
+    this.isJump=false;
+    //２段ジャンプ中かどうか
+    this.isJump2=false;
+    //y座標の基準点を一番上に
+    this.setOrigin(0.5, 0);
+
+    
+  },
+  // 毎フレーム処理
+  update: function() {
+  },
+});
+
+
+
+//ドーナツ
+phina.define('Donuts', {
+  //Spriteクラスを継承
+  superClass: 'Sprite',
+  //コンストラクタ
+  init: function(sp,x,y,fi) {
+    //親クラス初期化
+    this.superInit(sp, 32, 32);
+    
+    //位置をセット
+    this.setPosition(x, y);
+    
+    //フレームセット	
+    this.frameIndex=fi;
+
+    //y座標の基準点を一番上に
+    this.setOrigin(0.5, 0);
+    
+  },
+  //update時の処理
+  update: function(app) {
+  }
+});
+
+
+//ブラボーカット
+phina.define('Bravo', {
+  //Spriteクラスを継承
+  superClass: 'Sprite',
+  //コンストラクタ
+  init: function() {
+    //親クラス初期化
+    this.superInit('bravo');
+    
+    //位置をセット
+    this.setPosition(430,290)
+  },
+  //update時の処理
+  update: function(app) {
+  }
+});
+
+
+
+/*
+ * GAMEOVER画面
+ */
+phina.define("GameOver", {
+  // 継承
+  superClass: 'DisplayScene',
+  // 初期化
+  init: function(param) {
+    // 親クラス初期化
+    this.superInit(param);
+    // 背景色
+    this.backgroundColor = 'white';
+	//得点
+	var resultScore=param.score;
+	
+	//イメージ
+   Sprite('die').addChildTo(this).setPosition(this.gridX.center(), 100);
+
+    Label({
+      // 得点
+      text: 'SCORE:' + resultScore,
+      fontSize: 26,
+      fill: 'black',
+    }).addChildTo(this).setPosition(this.gridX.center(),this.gridY.center(2))
+
+    Label({
+      text: 'タッチかクリックでリトライ',
+      fontSize: 20,
+      fill: 'black',
+    }).addChildTo(this).setPosition(this.gridX.center(),250)
+    .tweener.fadeOut(1000).fadeIn(500).setLoop(true).play();
+  },
+  // タッチでメインシーンへ
+  onpointstart: function() {
+    this.exit('MainScene');  
+  },  
+});
+
+/*
+ * クリア画面
+ */
+phina.define("GameCrear", {
+  // 継承
+  superClass: 'DisplayScene',
+  // 初期化
+  init: function(param) {
+    // 親クラス初期化
+    this.superInit(param);
+    // 背景色
+    this.backgroundColor = 'white';
+	//最終得点
+	var resultScore=param.score;
+
+    // ラベル
+    Label({
+      text: 'ドーナツ:',
+      fontSize: 22,
+      fill: 'black',
+    }).addChildTo(this).setPosition(124, 170);
+
+	if(param.donuts.indexOf(0)>=0){
+	    var donuts=Donuts('donuts',205,150,0).addChildTo(this).tweener.fadeOut(10).fadeIn(500).play();
+   	    resultScore = resultScore+200;
+	}
+	if(param.donuts.indexOf(1)>=0){
+	    var donuts=Donuts('donuts',240,150,1).addChildTo(this).tweener.fadeOut(10).fadeIn(1000).play();
+   	    resultScore = resultScore+200;
+	}
+	if(param.donuts.indexOf(2)>=0){
+	    var donuts=Donuts('donuts',275,150,2).addChildTo(this).tweener.fadeOut(10).fadeIn(1500).play();
+   	    resultScore = resultScore+200;
+	}
+	if(param.donuts.indexOf(3)>=0){
+	    var donuts=Donuts('donuts',310,150,3).addChildTo(this).tweener.fadeOut(10).fadeIn(2000).play();
+   	    resultScore = resultScore+200;
+	}
+	if(param.donuts.indexOf(4)>=0){
+	    var donuts=Donuts('donuts',345,150,4).addChildTo(this).tweener.fadeOut(10).fadeIn(2500).play();
+   	    resultScore = resultScore+200;
+	}
+	if(param.donuts.indexOf(5)>=0){
+	    var donuts=Donuts('donuts',380,150,5).addChildTo(this).tweener.fadeOut(10).fadeIn(3000).play();
+   	    resultScore = resultScore+200;
+	}
+
+	if(param.donuts.length===6){
+	    Label({
+      text: 'Perfect! Get BonusPoint!',
+      fontSize: 18,
+      fill: 'pink',
+	    }).addChildTo(this).setPosition(this.gridX.center(), 200)
+	    .tweener.fadeOut(1000).fadeIn(500).setLoop(true).play();
+	    resultScore = resultScore+300;
+	}
+
+	if(resultScore > 100 && resultScore <4000){
+	    Sprite('result_normal').addChildTo(this).setPosition(this.gridX.center(), 80);
+	}else if(resultScore > 4001 && resultScore < 6100){
+	    Sprite('result_high').addChildTo(this).setPosition(this.gridX.center(), 80);
+	}else if(resultScore > 6101){
+	    Sprite('result_great').addChildTo(this).setPosition(this.gridX.center(), 80);
+	}
+
+
+    Label({
+      // 前のシーンから引き渡されたパラメータから取得
+      text: 'SCORE:' + resultScore,
+      fontSize: 24,
+      fill: '#000000',
+    }).addChildTo(this).setPosition(this.gridX.center(), 240)
+    .tweener.fadeOut(10).fadeIn(500).play();
+
+
+    Label({
+      text: 'タッチかクリックでもう一度開始',
+      fontSize: 18,
+      fill: '#999999',
+    }).addChildTo(this).setPosition(this.gridX.center(),280)
+
+  },
+  // タッチでメインシーンへ
+  onpointstart: function() {
+    this.exit('MainScene');  
+  },  
+
+
+});
+
+
+/* TODO
+ * チュートリアル画面
+ */
+phina.define("Tutorial1", {
+  // 継承
+  superClass: 'DisplayScene',
+  // 初期化
+  init: function() {
+    // 親クラス初期化
+    this.superInit();
+    // 背景色
+    this.backgroundColor = 'white';
+    Label({
+      text: 'タッチかクリックでジャンプ',
+      fontSize: 20,
+      fill: 'black',
+    }).addChildTo(this).setPosition(this.gridX.center(),100);
+    // プレイヤー
+    var player = Player('tomapiko').addChildTo(this);
+    player.setPosition(100, FLOORY);
+    this.player = player;
+    var jflg=false;
+    this.player.physical.velocity.y = -JUMP_POWOR;
+    this.player.physical.gravity.y = GRAVITY;
+    
+  },
+  // タッチで次のチュートリアルへ
+  onpointstart: function() {
+    this.exit('MainScene');    
+  },  
+});
+
+/*
+ * メイン処理
+ */
+phina.main(function() {
+  // アプリケーションを生成
+  var app = GameApp({
+    startLabel: 'MainScene',   // MainScene から開始
+    //startLabel:'Tutorial1',
+    width: SCREEN_WIDTH,  // 画面幅
+    height: SCREEN_HEIGHT,// 画面高さ
+    assets: ASSETS,       // アセット読み込み
+
+    // シーンのリストを引数で渡す
+    scenes: [
+      {
+        className: 'MainScene',
+        label: 'MainScene',
+      },
+
+      {
+        className: 'GameOver',
+        label: 'GameOver',
+      },
+
+      {
+        className: 'GameCrear',
+        label: 'GameCrear',
+      },
+
+      {
+        className: 'Tutorial1',
+        label: 'Tutorial1',
+      },
+      
+      
+    ]
+  });
+
+  //app.enableStats();
+  //サウンド再生用
+  app.domElement.addEventListener('touchend', function dummy() {
+        var s = phina.asset.Sound();
+        s.loadFromBuffer();
+        s.play().stop();
+        app.domElement.removeEventListener('touchend', dummy);
+    });
+    
+  // 実行
+  app.run();
+});</script>
+    <canvas id='world'></canvas>
+  </body>
+</html>
+
